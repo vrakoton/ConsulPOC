@@ -46,10 +46,7 @@ public class ConsulCacheAdapter extends GenericService implements CacheAdapter {
 	 */
 	@Override
 	public Object getCacheElement(Object pTokenName) throws Exception {
-		String hostname = StringUtils.isBlank(getConsulHostName()) ? "localhost" : getConsulHostName();
-		vlogDebug("Using hostname {0} to connect to Consul", hostname);
-		ConsulClient client = new ConsulClient(hostname);
-		GetValue rawValue = client.getKVValue((String)pTokenName).getValue();
+		GetValue rawValue = mConsulClient.getKVValue((String)pTokenName).getValue();
  		Object consulValue = (rawValue == null) ? null : rawValue.getDecodedValue();
 		vlogDebug("Found value {0} for token {1}", consulValue, pTokenName);
 		if (consulValue == null) {

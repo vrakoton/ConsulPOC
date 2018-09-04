@@ -1,11 +1,13 @@
 package com.poc.consul.configuration;
 
+import java.beans.Introspector;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
 
+import atg.beans.DynamicBeans;
 import atg.core.util.StringUtils;
 import atg.nucleus.GenericService;
 import atg.nucleus.Nucleus;
@@ -46,35 +48,55 @@ public class TokenManager extends GenericService {
 	 * @param setterName
 	 * @param pValue
 	 */
-	public void configureValue(ProceedingJoinPoint pCall, Object pValue) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+	public Object configureValue(ProceedingJoinPoint pCall, Object pValue) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 		GenericService pConfigurableService = (GenericService)pCall.getTarget();
 		
 		MethodSignature signature = (MethodSignature)pCall.getSignature();
 		Method m = signature.getMethod();
 		String setterName = StringUtils.replace(m.getName(), "get", "set");
+		String memberName = Introspector.decapitalize(setterName.substring(3));
 		
 		if (pConfigurableService == null) {
 			vlogError("The configurable service can not be null");
-			return;
+			return null;
 		}
 		if (pValue == null) {
 			vlogDebug("There is no need to set a null value on {0}", ((GenericService)pConfigurableService).getAbsoluteName());
-			return;
+			return null;
 		}
 		Class returnType = m.getReturnType();
 		Method setter = pConfigurableService.getClass().getMethod(setterName, returnType);
 		if (setter == null) {
 			vlogError("Setter method {0} either does not exist or is not accessible on class {1}", setterName, pConfigurableService.getClass().getName());
-			return;
+			return null;
 		}
 		
 		// --- in case the setter is setting a Nucleus object, we need to resolve it
-		if (returnType.isAssignableFrom(GenericService.class)) {
-			vlogDebug("We need to resolve component with path {0} for setter", pValue);
-			setter.invoke(pConfigurableService, Nucleus.getGlobalNucleus().resolveName((String)pValue));
-		} else {
-			setter.invoke(pConfigurableService, pValue);
+		
+		try {
+			if (returnType.isAssignableFrom(GenericService.class)) {
+				vlogDebug("We need to resolve component with path {0} for setter", pValue);
+				setter.invoke(pConfigurableService, Nucleus.getGlobalNucleus().resolveName((String)pValue));
+			} else if (returnType.isAssignableFrom(int.class)){
+				final int v = Integer.parseInt((String)pValue);
+				setter.invoke(pConfigurableService, v);
+				return v;
+			} else if (returnType.isAssignableFrom(float.class)){
+				final float v = Float.parseFloat((String)pValue);
+				setter.invoke(pConfigurableService, v);
+				return v;
+			} else if (returnType.isAssignableFrom(double.class)){
+				final double v = Double.parseDouble((String)pValue);
+				setter.invoke(pConfigurableService, v);
+				return v;
+			} else {
+				
+				DynamicBeans.setPropertyValueFromString(pConfigurableService, memberName, (String)pValue);
+			} 
+		} catch (Exception exc) {
+			vlogError(exc, "Could not set value {0} on {1} using {2}", pValue, pConfigurableService.getAbsoluteName(), setter.getName());
 		}
+		return pValue;
 	}
 	
 	public Cache getConsulCache() {
