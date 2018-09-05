@@ -48,7 +48,7 @@ public class ConsulCacheAdapter extends GenericService implements CacheAdapter {
 	public Object getCacheElement(Object pTokenName) throws Exception {
 		GetValue rawValue = mConsulClient.getKVValue((String)pTokenName).getValue();
  		Object consulValue = (rawValue == null) ? null : rawValue.getDecodedValue();
-		vlogDebug("Found value {0} for token {1}", consulValue, pTokenName);
+		vlogDebug("Found value {0} for token {1} in Consul", consulValue, pTokenName);
 		if (consulValue == null) {
 			vlogWarning("Could not find a value for token {0} in Consul", pTokenName);
 		}

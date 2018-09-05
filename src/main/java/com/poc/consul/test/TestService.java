@@ -16,6 +16,7 @@ public class TestService extends GenericService {
 		setRepository(null);
 	}
 
+	@DynamicConfig(tokenName = "token.repository")
 	public GSARepository getRepository() {
 		return mRepository;
 	}

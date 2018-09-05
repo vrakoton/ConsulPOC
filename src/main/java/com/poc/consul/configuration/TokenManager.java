@@ -38,7 +38,7 @@ public class TokenManager extends GenericService {
 			vlogError(exc, "Unable to retrieve the value of the token named {0}", pTokenName);
 		}
 		
-		vlogDebug("Found value {0} from token {1}", tokenValue, pTokenName);
+		vlogDebug("Found value {0} for token {1}", tokenValue, pTokenName);
 		return tokenValue;
 	}
 	
@@ -74,9 +74,11 @@ public class TokenManager extends GenericService {
 		// --- in case the setter is setting a Nucleus object, we need to resolve it
 		
 		try {
-			if (returnType.isAssignableFrom(GenericService.class)) {
+			if (GenericService.class.isAssignableFrom(returnType)) {
 				vlogDebug("We need to resolve component with path {0} for setter", pValue);
-				setter.invoke(pConfigurableService, Nucleus.getGlobalNucleus().resolveName((String)pValue));
+				Object service =  Nucleus.getGlobalNucleus().resolveName((String)pValue);
+				setter.invoke(pConfigurableService, service);
+				return service;
 			} else if (returnType.isAssignableFrom(int.class)){
 				final int v = Integer.parseInt((String)pValue);
 				setter.invoke(pConfigurableService, v);
@@ -90,7 +92,6 @@ public class TokenManager extends GenericService {
 				setter.invoke(pConfigurableService, v);
 				return v;
 			} else {
-				
 				DynamicBeans.setPropertyValueFromString(pConfigurableService, memberName, (String)pValue);
 			} 
 		} catch (Exception exc) {
