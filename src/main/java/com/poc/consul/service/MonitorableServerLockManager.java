@@ -3,6 +3,8 @@ package com.poc.consul.service;
 import com.ecwid.consul.v1.catalog.CatalogConsulClient;
 import com.ecwid.consul.v1.catalog.model.CatalogDeregistration;
 import com.ecwid.consul.v1.catalog.model.CatalogRegistration;
+import com.poc.consul.annotation.DynamicConfig;
+import com.poc.consul.configuration.ConsulConfiguration;
 
 import atg.nucleus.ServiceException;
 import atg.service.lockmanager.ServerLockManager;
@@ -17,9 +19,10 @@ import atg.service.lockmanager.ServerLockManager;
  * a self registration capability to Consul.
  *
  */
-public class MonitorableServerLockManager extends ServerLockManager {
+public class MonitorableServerLockManager extends ServerLockManager implements DiscoverableService {
 	CatalogRegistration mRegistration;
 	String mServiceId = "slm";
+	ConsulConfiguration mConsulConfiguration;
 	
 	/**
 	 * We need to add the slm to the Consul's service catalog for other instances to see it
@@ -28,7 +31,44 @@ public class MonitorableServerLockManager extends ServerLockManager {
 		super.doStartService();
 		
 		// --- now publish the status to Consul
-		
+		register();
+	}
+	
+	@DynamicConfig(tokenName = "token.slm.port")
+	public int getPort() {
+		return super.getPort();
+	}
+	
+	
+	/**
+	 * We need to unregister the service when the ATG component is brought down
+	 */
+	public void doStopService() throws ServiceException {
+		super.doStopService();
+		unregister();
+	}
+
+	public String getServiceId() {
+		return mServiceId;
+	}
+
+	public void setServiceId(String pServiceId) {
+		mServiceId = pServiceId;
+	}
+
+	public ConsulConfiguration getConsulConfiguration() {
+		return mConsulConfiguration;
+	}
+
+	public void setConsulConfiguration(ConsulConfiguration pConsulConfiguration) {
+		mConsulConfiguration = pConsulConfiguration;
+	}
+
+	/**
+	 * registers the service in Consul
+	 */
+	@Override
+	public boolean register() {
 		mRegistration = new CatalogRegistration();
 		
 		CatalogRegistration.Service service = new CatalogRegistration.Service();
@@ -41,31 +81,25 @@ public class MonitorableServerLockManager extends ServerLockManager {
 		mRegistration.setNode(getHostName());
 		mRegistration.setAddress(getHostAddr().toString());
 		
-		CatalogConsulClient client = new CatalogConsulClient("consul.local.com");
+		CatalogConsulClient client = new CatalogConsulClient(getConsulConfiguration().getConsulHostName());
 		client.catalogRegister(mRegistration);
 		vlogInfo("Server lock manager has been registerd to consul as {0}", mRegistration);
+		return true;
 	}
-	
+
 	/**
-	 * We need to unregister the service when the ATG component is brought down
+	 * unregisters the service from Consul
 	 */
-	public void doStopService() throws ServiceException {
-		super.doStopService();
+	@Override
+	public boolean unregister() {
 		if (mRegistration != null) {
 			CatalogDeregistration r = new CatalogDeregistration();
 			r.setNode(getHostName());
 			r.setServiceId(getServiceId());
-			CatalogConsulClient client = new CatalogConsulClient("consul.local.com");
+			CatalogConsulClient client = new CatalogConsulClient(getConsulConfiguration().getConsulHostName());
 			client.catalogDeregister(r);
 		}
-	}
-
-	public String getServiceId() {
-		return mServiceId;
-	}
-
-	public void setServiceId(String pServiceId) {
-		mServiceId = pServiceId;
+		return true;
 	}
 
 }
