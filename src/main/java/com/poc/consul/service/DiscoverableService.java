@@ -10,6 +10,14 @@ package com.poc.consul.service;
  *
  */
 public interface DiscoverableService {
+	/**
+	 * The register method is used to register the service in Consul service catalog.
+	 * @return true if registration is successful
+	 */
 	public boolean register();
+	/**
+	 * The unregister method is used to unregister the service in Consul service catalog.
+	 * @return true if de-registration is successful
+	 */
 	public boolean unregister();
 }
